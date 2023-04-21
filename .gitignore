@@ -1,3 +1,4 @@
 .idea
 cmd/cookies.json
 .DS_Store
+build/*
