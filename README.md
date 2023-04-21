@@ -2,7 +2,7 @@
 # Bing Ai Chat Copilot By Golang 
 
 ## Requirements
-A Microsoft Account with early access to https://bing.com/chat (Required)
+A Microsoft Account with early access to https://bing.com/chat (Required)  
 Required in a supported country with New Bing Or set http_proxy
 
 ## Install
@@ -12,7 +12,7 @@ Required in a supported country with New Bing Or set http_proxy
 
 ## Usage
 ```shell
-➜  cmd ./bingchat -c cookies.json
+➜ ./bingchat -c cookies.json
 local http proxy is set
 Bing Ai Chat Copilot
 /reset [styles]
