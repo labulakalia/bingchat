@@ -1,4 +1,4 @@
-module github.com/labulakalia/bingchat
+module bingchat
 
 go 1.18
 
