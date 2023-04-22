@@ -75,8 +75,13 @@ type SendMessage struct {
 }
 
 type MessageResp struct {
-	Type      int    `json:"type"`
-	Target    string `json:"target"`
+	Type   int    `json:"type"`
+	Target string `json:"target"`
+	Item   struct {
+		Messages []struct {
+			MessageType string `json:"messageType,omitempty"`
+		} `json:"messages"`
+	} `json:"item"`
 	Arguments []struct {
 		Cursor struct {
 			J string `json:"j"`
@@ -124,39 +129,6 @@ type MessageResp struct {
 				ContentOrigin string      `json:"contentOrigin"`
 				Privacy       interface{} `json:"privacy"`
 			} `json:"suggestedResponses"`
-		} `json:"messages"`
-		RequestId string `json:"requestId"`
-	} `json:"arguments"`
-}
-
-type T struct {
-	Type      int    `json:"type"`
-	Target    string `json:"target"`
-	Arguments []struct {
-		Messages []struct {
-			Text          string    `json:"text"`
-			Author        string    `json:"author"`
-			CreatedAt     time.Time `json:"createdAt"`
-			Timestamp     time.Time `json:"timestamp"`
-			MessageId     string    `json:"messageId"`
-			Offense       string    `json:"offense"`
-			AdaptiveCards []struct {
-				Type    string `json:"type"`
-				Version string `json:"version"`
-				Body    []struct {
-					Type string `json:"type"`
-					Text string `json:"text"`
-					Wrap bool   `json:"wrap"`
-				} `json:"body"`
-			} `json:"adaptiveCards"`
-			SourceAttributions []interface{} `json:"sourceAttributions"`
-			Feedback           struct {
-				Tag       interface{} `json:"tag"`
-				UpdatedOn interface{} `json:"updatedOn"`
-				Type      string      `json:"type"`
-			} `json:"feedback"`
-			ContentOrigin string      `json:"contentOrigin"`
-			Privacy       interface{} `json:"privacy"`
 		} `json:"messages"`
 		RequestId string `json:"requestId"`
 	} `json:"arguments"`

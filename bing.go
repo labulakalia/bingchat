@@ -108,7 +108,10 @@ func (b *BingChatHub) Reset(style ...ConversationStyle) {
 		fmt.Println("Switch Style", style[0])
 		b.conversationStyle = style[0]
 	}
+	b.wsConn.Close()
 	b.chatSession = nil
+	b.invocationId = 0
+	b.sendMessage = nil
 }
 
 func (b *BingChatHub) Style() ConversationStyle {
@@ -116,6 +119,7 @@ func (b *BingChatHub) Style() ConversationStyle {
 }
 
 func (b *BingChatHub) createConversation() error {
+	log.Println("create conversation")
 	req, err := http.NewRequest("GET", "https://www.bing.com/turing/conversation/create", nil)
 	if err != nil {
 		return err
@@ -131,7 +135,7 @@ func (b *BingChatHub) createConversation() error {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%d", resp.StatusCode)
+		return fmt.Errorf("request status code: %d", resp.StatusCode)
 	}
 	defer resp.Body.Close()
 	b.chatSession = &ConversationSession{}
@@ -143,11 +147,12 @@ func (b *BingChatHub) createConversation() error {
 }
 
 func (b *BingChatHub) initWsConnect() error {
+	log.Println("init ws connect")
 	dial := websocket.DefaultDialer
 	dial.Proxy = http.ProxyFromEnvironment
 	dial.HandshakeTimeout = Timeout
 	dial.EnableCompression = true
-	dial.HandshakeTimeout = Timeout
+
 	dial.TLSClientConfig = &tls.Config{}
 	conn, resp, err := dial.Dial("wss://sydney.bing.com/sydney/ChatHub", b.parseHeader(wsHeader))
 	if err != nil {
@@ -163,17 +168,17 @@ func (b *BingChatHub) initWsConnect() error {
 		return fmt.Errorf("write json response: %v", err)
 	}
 	_, _, err = conn.NextReader()
-	go func() {
-		for {
-			b.Lock()
-			err := conn.WriteMessage(websocket.BinaryMessage, []byte(`{"type":6}`+DELIMITER))
-			b.Unlock()
-			if err != nil {
-				break
-			}
-			time.Sleep(time.Second * 5)
-		}
-	}()
+	//go func() {
+	//	for {
+	//		b.Lock()
+	//		err := conn.WriteMessage(websocket.BinaryMessage, []byte(`{"type":6}`+DELIMITER))
+	//		b.Unlock()
+	//		if err != nil {
+	//			break
+	//		}
+	//		time.Sleep(time.Second * 5)
+	//	}
+	//}()
 	return err
 }
 
@@ -187,6 +192,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	if b.chatSession == nil {
 		err := b.createConversation()
 		if err != nil {
+			log.Println("create conversation error: ", err)
 			return nil, err
 		}
 	}
@@ -208,6 +214,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	b.invocationId += 1
 	msgData, _ := json.Marshal(b.sendMessage)
 	b.Lock()
+	log.Println("write message")
 	err = b.wsConn.WriteMessage(websocket.BinaryMessage, append(msgData, []byte(DELIMITER)...))
 	b.Unlock()
 	if err != nil {
@@ -219,12 +226,16 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 	go func() {
 		var startRev bool
 		lastMsg := ""
+		defer close(msgRespChannel.Notify)
 		for {
+			log.Println("read message")
 			_, data, err := b.wsConn.ReadMessage()
 			if err != nil {
-				log.Println("\n read message error: ", err)
+				log.Println(err)
+				b.Reset()
 				break
 			}
+			fmt.Printf("%s\n", data)
 			if len(data) == 0 {
 				continue
 			}
@@ -235,6 +246,15 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 			data = spData[0]
 			resp := MessageResp{}
 			_ = json.Unmarshal(data, &resp)
+
+			for _, message := range resp.Item.Messages {
+				if message.MessageType == "Disengaged" {
+					b.Reset()
+
+					return
+				}
+			}
+
 			if resp.Type == 1 && len(resp.Arguments) > 0 && resp.Arguments[0].Cursor.J != "" {
 				startRev = true
 				continue
@@ -250,10 +270,11 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 					}
 					msgRespChannel.Suggest = suggests
 				}
+
 				if resp.Arguments[0].Messages[0].MessageType == "Disengaged" {
 					b.Reset()
-					b.wsConn.Close()
-					continue
+
+					break
 				}
 				msg := strings.TrimSpace(resp.Arguments[0].Messages[0].Text)
 				msgRespChannel.Msg = msg
@@ -271,7 +292,7 @@ func (b *BingChatHub) SendMessage(msg string) (*MsgResp, error) {
 				break
 			}
 		}
-		close(msgRespChannel.Notify)
+
 	}()
 
 	return msgRespChannel, nil
