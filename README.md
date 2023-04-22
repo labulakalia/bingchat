@@ -8,7 +8,7 @@ Required in a supported country with New Bing Or set http_proxy
 ## Install
 - Install [Cookie-Editor](https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm?hl=en),
 - Export `bing.com` cookies to save json file
-- Download `bingchat` for your platform
+- Download [bingchat](https://github.com/labulakalia/bingchat/releases/latest) for your platform
 
 ## Usage
 ```shell
